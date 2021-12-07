@@ -139,3 +139,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 MESSAGE_TAGS = {
     messages.ERROR: 'danger',
 }
+
+# SMTP configuration
+EMAIL_HOST = 'smtp.host.com'
+EMAIL_PORT = 111
+EMAIL_HOST_USER = 'myuser'
+EMAIL_HOST_PASSWORD = 'password'
+EMAIL_TLS = True
