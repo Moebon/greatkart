@@ -2,6 +2,9 @@ import django
 from django.contrib import messages, auth
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
+
+from carts.models import Cart, CartItem
+from carts.views import _cart_id
 from .forms import RegistrationForm
 from .models import Account
 
@@ -30,8 +33,7 @@ def register(request):
 
             username = email.split('@')[0]
 
-            user = Account.objects.create_user(
-                first_name=first_name, last_name=last_name, username=username, email=email, password=password)
+            user = Account.objects.create_user(first_name=first_name, last_name=last_name, username=username, email=email, password=password)
             user.phone_number = phone_number
             user.save()
 
@@ -64,6 +66,19 @@ def login(request):
 
         user = auth.authenticate(email=email, password=password)
         if user is not None:
+
+            try:
+                cart = Cart.objects.get(cart=_cart_id(request))
+                is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
+                if is_cart_item_exists:
+                    cart_item = CartItem.objects.filter(cart=cart)
+
+                    for item in cart_item:
+                        item.user = user
+                        item.save()
+            except:
+                pass
+
             auth.login(request, user)
             messages.success(request, 'You are now logged in.')
             return redirect('dashboard')
@@ -90,8 +105,7 @@ def activate(request, uidb64, token):
     if user is not None and default_token_generator.check_token(user, token):
         user.is_active = True
         user.save()
-        messages.success(
-            request, 'Congratulations! Your account is activated.')
+        messages.success(request, 'Congratulations! Your account is activated.')
     else:
         messages.error(request, 'Invalid activation link.')
     return redirect('login')
@@ -120,8 +134,7 @@ def forgot_password(request):
             to_email = email
             send_email = EmailMessage(mail_subject, message, to=[to_email])
             send_email.send()
-            messages.success(
-                request, 'Password reset email sent successfully to you email address.')
+            messages.success(request, 'Password reset email sent successfully to you email address.')
             return redirect('login')
         else:
             messages.error(request, 'Error! Account does not exists')
