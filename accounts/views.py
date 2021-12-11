@@ -16,6 +16,7 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
 from secrets import compare_digest
+import requests
 
 
 # Create your views here.
@@ -68,19 +69,49 @@ def login(request):
         if user is not None:
 
             try:
-                cart = Cart.objects.get(cart=_cart_id(request))
+                cart = Cart.objects.get(cart_id=_cart_id(request))
                 is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
                 if is_cart_item_exists:
                     cart_item = CartItem.objects.filter(cart=cart)
 
+                    product_variation = []
                     for item in cart_item:
-                        item.user = user
-                        item.save()
+                        variation = item.variations.all()
+                        product_variation.append(list(variation))
+
+                    cart_item = CartItem.objects.filter(user=user)
+                    existing_variation_list = []
+                    ids = []
+                    for item in cart_item:
+                        existing_variations = item.variations.all()
+                        existing_variation_list.append(list(existing_variations))
+                        ids.append(item.id)
+                    
+                    for pr in product_variation:
+                        if pr in existing_variation_list:
+                            index = existing_variation_list.index(pr)
+                            item_id = ids[index]
+                            item = CartItem.objects.get(id=item_id)
+                            item.quantity += 1
+                            item.user = user
+                            item.save()
+                        else:
+                            cart_item = CartItem.objects.filter(cart=cart)
+                            for item in cart_item:
+                                item.user = user
+                                item.save()
             except:
                 pass
 
             auth.login(request, user)
             messages.success(request, 'You are now logged in.')
+            try:
+                query = requests.utils.urlparse(request.META.get('HTTP_REFERER')).query
+                params = dict(x.split('=') for x in query.split('&'))
+                if 'next' in params:
+                    return redirect(params['next'])
+            except:
+                pass
             return redirect('dashboard')
         else:
             messages.error(request, 'Invalid email or password')
