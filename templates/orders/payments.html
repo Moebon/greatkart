@@ -150,6 +150,7 @@ function getCookie(name) {
     let csrftoken = getCookie('csrftoken');
     let orderID = "{{ order.order_number }}"
     let paymentMethod = 'PayPal'
+    let redirectUrl = "{% url 'order_complete' %}"
 
     // Render the PayPal button into #paypal-button-container
     paypal.Buttons({
@@ -192,8 +193,10 @@ function getCookie(name) {
                             status: orderData.status,
                         }),
                     })
-                    // .then(response => response.json())
-                    // .then(data => console.log(data))
+                    .then(response => response.json())
+                    .then(data => {
+                        window.location.href = redirectUrl + '?order_number='+data.order_number + '&payment_id='+data.transID
+                    })
                 }
 
 
