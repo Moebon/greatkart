@@ -1,11 +1,13 @@
 from django.core import paginator
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q
 from carts.models import CartItem
-from .models import Product
+from .models import Product, ReviewRating
 from category.models import Category
 from carts.views import _cart_id
+from .forms import ReviewForm
+from django.contrib import messages
 
 # Create your views here.
 
@@ -58,3 +60,27 @@ def search(request):
                 Q(description__icontains=keyword) | Q(product_name__icontains=keyword))
             context = {'products': products, 'product_count': products.count()}
     return render(request, 'store/store.html', context=context)
+
+
+def submit_review(request, product_id):
+    url = request.META.get('HTTP_REFERER')
+    if request.method == 'POST':
+        try:
+            review = ReviewRating.objects.get(user__id=request.user.id, product__id=product_id)
+            form = ReviewForm(request.POST, instance=review)
+            form.save()
+            messages.success(request, 'Thank you! You review has been updated successfully')
+            return redirect(url)
+        except ReviewRating.DoesNotExist:
+            form = ReviewForm(request.POST)
+            if form.is_valid():
+                data = ReviewRating()
+                data.subject = form.cleaned_data['subject']
+                data.rating = form.cleaned_data['rating']
+                data.review = form.cleaned_data['review']
+                data.ip = request.META.get('REMOTE_ADDR')
+                data.product_id = product_id
+                data.user_id = request.user.id
+                messages.success(request, 'Thank you! You have reviewed')
+                return redirect(url)
+
